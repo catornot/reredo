@@ -16,6 +16,12 @@ use bevy::{
 
 const GRID_CELL_SIZE: Vec2 = Vec2::new(50., 50.);
 
+#[derive(Debug, Event)]
+struct MoveEvent(Vec2);
+
+#[derive(Debug, Resource)]
+struct KeyBuffer(Vec<KeyCode>);
+
 #[derive(Debug, Resource)]
 struct GameMap(Box<[Box<[bool]>]>);
 
@@ -24,9 +30,6 @@ struct GridPos([usize; 2]);
 
 #[derive(Debug, Component)]
 struct Move(Vec2);
-
-#[derive(Debug, Event)]
-struct MoveEvent(Vec2);
 
 #[derive(Debug, Component, Clone, Copy)]
 struct SnakeIndex(usize);
@@ -59,6 +62,7 @@ fn main() {
         .insert_resource(GameMap(Box::new(array::from_fn::<_, 100, _>(|_| {
             Box::new([false; 100]) as Box<[bool]>
         })) as Box<[Box<[bool]>]>))
+        .insert_resource(KeyBuffer(Vec::new()))
         .add_event::<MoveEvent>()
         .add_systems(Startup, setup)
         .add_systems(
@@ -68,7 +72,8 @@ fn main() {
                 consume_move.after(handle_keys),
                 on_move_snake.after(handle_keys),
                 move_snake.after(on_move_snake),
-                update_snake_move.after(on_move_snake),
+                cycle_snake.after(move_snake),
+                camera_follow,
             ),
         )
         .run();
@@ -127,17 +132,177 @@ fn spawn_snake_piece<'a>(
     ))
 }
 
-fn handle_keys(keys: Res<ButtonInput<KeyCode>>, mut move_event: EventWriter<MoveEvent>) {
+fn camera_follow(
+    snake_pieces: Query<(&SnakeIndex, &Transform), (With<CanMove>, Without<Camera>)>,
+    mut camera: Query<&mut Transform, (With<Camera>, Without<CanMove>)>,
+    time: Res<Time>,
+    mut start_time: Local<f32>,
+    mut start_pos: Local<Vec2>,
+) {
+    let Some(head_pos) = snake_pieces
+        .iter()
+        .fold(None::<(&SnakeIndex, &Transform)>, |max, piece| {
+            Some(max.unwrap_or(piece)).map(|other| {
+                if other.0 .0 < piece.0 .0 {
+                    piece
+                } else {
+                    other
+                }
+            })
+        })
+        .map(|head| head.1.translation.truncate())
+    else {
+        return;
+    };
+
+    let mut camera_pos = camera
+        .get_single_mut()
+        .expect("only one camera should ever exists");
+
+    if *start_time + 0.3 < time.elapsed_seconds() {
+        if camera_pos.translation.truncate() != head_pos {
+            *start_time = time.elapsed_seconds();
+            *start_pos = camera_pos.translation.truncate();
+        }
+        return;
+    }
+
+    camera_pos.translation = start_pos
+        .lerp(head_pos, (time.elapsed_seconds() - *start_time).div(0.3))
+        .extend(0.)
+}
+
+fn cycle_snake(
+    mut cycle_buffer: ResMut<KeyBuffer>,
+    snake_pieces: Query<(Entity, &mut SnakeIndex, &GridPos)>,
+    mut map: ResMut<GameMap>,
+    mut commands: Commands,
+) {
+    if !matches!(cycle_buffer.0.last(), Some(KeyCode::Enter)) {
+        return;
+    }
+
+    log::info!("uh: {:?}", cycle_buffer.0);
+
+    if cycle_buffer.0.first_chunk() == Some(&[KeyCode::KeyU, KeyCode::KeyW, KeyCode::KeyU]) {
+        // uwu
+        log::info!("uwu");
+    }
+
+    const KEY_MAP: [KeyCode; 10] = [
+        KeyCode::Digit0,
+        KeyCode::Digit1,
+        KeyCode::Digit2,
+        KeyCode::Digit3,
+        KeyCode::Digit4,
+        KeyCode::Digit5,
+        KeyCode::Digit6,
+        KeyCode::Digit7,
+        KeyCode::Digit8,
+        KeyCode::Digit9,
+    ];
+
+    let steps = if matches!(cycle_buffer.0.first(), Some(KeyCode::KeyC)) {
+        if let Some(steps) = cycle_buffer
+            .0
+            .get(1..cycle_buffer.0.len().saturating_sub(1))
+            .and_then(|slice| {
+                dbg!(slice
+                    .iter()
+                    .rev()
+                    .inspect(|key| log::info!("{key:?}"))
+                    .map(|key| KEY_MAP.iter().position(|other_key| key == other_key))
+                    .enumerate()
+                    .fold(None::<usize>, |steps, (pos, step)| {
+                        if pos == 0 {
+                            step
+                        } else {
+                            Some(steps? + 10usize.pow(pos as u32) * step?)
+                        }
+                    }))
+            })
+        {
+            steps
+        } else {
+            cycle_buffer.0.clear();
+            return;
+        }
+    } else {
+        cycle_buffer.0.clear();
+        return;
+    };
+
+    log::info!("{steps}");
+
+    let mut snake_ordered = snake_pieces.iter().collect::<Vec<_>>();
+    snake_ordered.sort_by(|other, piece| other.1 .0.cmp(&piece.1 .0));
+    snake_ordered.reverse();
+
+    (0..steps)
+        .filter_map(|i| snake_ordered.get(i))
+        .for_each(|piece| {
+            if let Some(map_tile) = map
+                .0
+                .get_mut(piece.2 .0[0])
+                .and_then(|line| line.get_mut(piece.2 .0[1]))
+            {
+                *map_tile = false;
+            }
+
+            return commands.entity(piece.0).despawn_recursive();
+        });
+
+    if let Some(new_head) = snake_ordered.get(steps).map(|new_head| new_head.0) {
+        commands.entity(new_head).insert(CanMove);
+    }
+
+    cycle_buffer.0.clear();
+}
+
+fn handle_keys(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut move_event: EventWriter<MoveEvent>,
+    mut cycle_buffer: ResMut<KeyBuffer>,
+    snake_pieces: Query<Entity, With<CanMove>>,
+) {
+    if snake_pieces.iter().next().is_none() {
+        return;
+    }
+
     let move_dir = [
-        keys.just_pressed(KeyCode::ArrowRight) as i32 as f32
-            - keys.just_pressed(KeyCode::ArrowLeft) as i32 as f32,
-        keys.just_pressed(KeyCode::ArrowUp) as i32 as f32
-            - keys.just_pressed(KeyCode::ArrowDown) as i32 as f32,
+        keys.pressed(KeyCode::ArrowRight) as i32 as f32
+            - keys.pressed(KeyCode::ArrowLeft) as i32 as f32,
+        keys.pressed(KeyCode::ArrowUp) as i32 as f32
+            - keys.pressed(KeyCode::ArrowDown) as i32 as f32,
     ];
 
     if !(move_dir[0] == 0. && move_dir[1] == 0.) && move_dir[0] != move_dir[1] {
         move_event.send(MoveEvent(Vec2::from_array(move_dir)));
     }
+
+    cycle_buffer.0.extend(
+        keys.get_just_pressed()
+            .map(|key| key.to_owned())
+            .filter(|key| {
+                matches!(
+                    *key,
+                    KeyCode::Digit0
+                        | KeyCode::Digit1
+                        | KeyCode::Digit2
+                        | KeyCode::Digit3
+                        | KeyCode::Digit4
+                        | KeyCode::Digit5
+                        | KeyCode::Digit6
+                        | KeyCode::Digit7
+                        | KeyCode::Digit8
+                        | KeyCode::Digit9
+                        | KeyCode::KeyC
+                        | KeyCode::KeyW
+                        | KeyCode::KeyU
+                        | KeyCode::Enter
+                )
+            }),
+    )
 }
 
 fn consume_move(
@@ -172,7 +337,7 @@ fn on_move_snake(
         &SnakeColor,
         Option<&CanMove>,
     )>,
-    map: Res<GameMap>,
+    mut map: ResMut<GameMap>,
 ) {
     assert!(snake_pieces.iter().filter_map(|piece| piece.5).count() <= 1);
 
@@ -203,6 +368,11 @@ fn on_move_snake(
             return;
         }
 
+        *map.0
+            .get_mut(grid_pos[0])
+            .and_then(|row| row.get_mut(grid_pos[1]))
+            .expect("previous checks should have valided this one too") = true;
+
         spawn_snake_piece(
             &mut commands,
             &mut meshes,
@@ -213,40 +383,15 @@ fn on_move_snake(
         )
         .insert(*snake_index);
         snake_index.0 += 1;
-
-        log::info!("{grid_pos:?}");
+        *grid_pos = [
+            (grid_pos[0] as isize + move_dir.x as isize) as usize,
+            (grid_pos[1] as isize + move_dir.y as isize) as usize,
+        ];
 
         commands
             .entity(ent)
             .remove::<CanMove>()
             .insert(Move(move_dir));
-    }
-}
-
-fn update_snake_move(
-    mut map: ResMut<GameMap>,
-    can_move: Query<Entity, With<CanMove>>,
-    mut moving: Query<(&Move, &mut GridPos), Without<CanMove>>,
-    mut did_set: Local<bool>,
-) {
-    (*did_set && can_move.get_single().ok().is_some()).then(|| *did_set = false);
-
-    let Ok((move_dir, mut grid_pos)) = moving.get_single_mut() else {
-        return;
-    };
-
-    if !*did_set {
-        *did_set = true;
-
-        *map.0
-            .get_mut(grid_pos.0[0])
-            .and_then(|row| row.get_mut(grid_pos.0[1]))
-            .expect("previous checks should have valided this one too") = true;
-
-        grid_pos.0 = dbg!([
-            (grid_pos.0[0] as isize + move_dir.0.x as isize) as usize,
-            (grid_pos.0[1] as isize + move_dir.0.y as isize) as usize,
-        ]);
     }
 }
 
@@ -266,7 +411,7 @@ fn move_snake(
         *elapsed = time.elapsed().as_secs_f32();
     };
 
-    let dif = (time.elapsed().as_secs_f32() - *elapsed).div(0.5);
+    let dif = (time.elapsed().as_secs_f32() - *elapsed).div(0.3);
     let ddst = dst.unwrap();
 
     transform.translation = ddst
