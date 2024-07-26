@@ -11,6 +11,7 @@ use bevy::{
 };
 
 use door::door_plugin;
+use game_over::game_over_plugin;
 use input::input_plugin;
 use main_menu::main_menu_ui_plugin;
 use map::map_plugin;
@@ -21,6 +22,7 @@ use ui::game_ui_plugin;
 use wall::wall_plugin;
 
 mod door;
+mod game_over;
 mod input;
 mod main_menu;
 mod map;
@@ -73,6 +75,7 @@ fn main() {
             input_plugin,
             main_menu_ui_plugin,
             title_ui_plugin,
+            game_over_plugin,
         ))
         .enable_state_scoped_entities::<GameState>()
         .configure_sets(
