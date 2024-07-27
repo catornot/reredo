@@ -152,7 +152,10 @@ fn cycle_snake(
                         if pos == 0 {
                             step
                         } else {
-                            Some(steps? + 10usize.pow(pos as u32) * step?)
+                            Some(
+                                steps?
+                                    + 10usize.pow(u32::try_from(pos).ok()?).checked_mul(step?)?,
+                            )
                         }
                     })
             })

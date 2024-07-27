@@ -92,7 +92,7 @@ pub fn spawn_door(
                     door_char,
                     TextStyle {
                         font: ui_resources.font.clone(),
-                        font_size: 10.,
+                        font_size: 20.,
                         color: Color::WHITE,
                     },
                 ),
@@ -127,7 +127,7 @@ pub fn spawn_pressure_plate(
                     door_char,
                     TextStyle {
                         font: ui_resources.font.clone(),
-                        font_size: 10.,
+                        font_size: 20.,
                         color: Color::WHITE,
                     },
                 ),
