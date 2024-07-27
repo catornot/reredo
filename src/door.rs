@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{map::GridPos, sounds::SoundEvent, GameState};
+use crate::{map::GridPos, sounds::SoundEvent, title::UiResources, GameState};
 
 #[derive(Debug, Resource)]
 pub struct DoorSprites {
@@ -71,35 +71,68 @@ fn on_plate_activated(
 pub fn spawn_door(
     commands: &mut Commands<'_, '_>,
     door_sprites: &DoorSprites,
+    ui_resources: &UiResources,
     grid_pos: GridPos,
     door_char: char,
 ) {
-    commands.spawn((
-        SpriteBundle {
-            texture: door_sprites.door.clone(),
-            transform: Transform::from_xyz(0., 0., 30.),
-            ..default()
-        },
-        Door(door_char),
-        grid_pos,
-        StateScoped(GameState::Gaming),
-    ));
+    commands
+        .spawn((
+            SpriteBundle {
+                texture: door_sprites.door.clone(),
+                transform: Transform::from_xyz(0., 0., 30.),
+                ..default()
+            },
+            Door(door_char),
+            grid_pos,
+            StateScoped(GameState::Gaming),
+        ))
+        .with_children(|parent| {
+            parent.spawn(Text2dBundle {
+                text: Text::from_section(
+                    door_char,
+                    TextStyle {
+                        font: ui_resources.font.clone(),
+                        font_size: 10.,
+                        color: Color::WHITE,
+                    },
+                ),
+                transform: Transform::from_xyz(0., 0., 32.),
+                ..default()
+            });
+        });
 }
 
 pub fn spawn_pressure_plate(
     commands: &mut Commands<'_, '_>,
     door_sprites: &DoorSprites,
+    ui_resources: &UiResources,
     grid_pos: GridPos,
+    door_char: char,
 ) {
-    commands.spawn((
-        SpriteBundle {
-            texture: door_sprites.pressure_plate.clone(),
-            transform: Transform::from_xyz(0., 0., 30.),
-            ..default()
-        },
-        TextureAtlas::from(door_sprites.pressure_plate_layout.clone()),
-        PressurePlate,
-        grid_pos,
-        StateScoped(GameState::Gaming),
-    ));
+    commands
+        .spawn((
+            SpriteBundle {
+                texture: door_sprites.pressure_plate.clone(),
+                transform: Transform::from_xyz(0., 0., 30.),
+                ..default()
+            },
+            TextureAtlas::from(door_sprites.pressure_plate_layout.clone()),
+            PressurePlate,
+            grid_pos,
+            StateScoped(GameState::Gaming),
+        ))
+        .with_children(|parent| {
+            parent.spawn(Text2dBundle {
+                text: Text::from_section(
+                    door_char,
+                    TextStyle {
+                        font: ui_resources.font.clone(),
+                        font_size: 10.,
+                        color: Color::WHITE,
+                    },
+                ),
+                transform: Transform::from_xyz(0., 0., 32.),
+                ..default()
+            });
+        });
 }

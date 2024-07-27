@@ -111,13 +111,17 @@ impl Tile {
                 .insert(SnakeIndex(0))
             }
             TopTileType::Wall => _ = spawn_wall(commands, meshes, materials, pos),
-            TopTileType::Door(door_char) => spawn_door(commands, door_sprites, pos, door_char),
+            TopTileType::Door(door_char) => {
+                spawn_door(commands, door_sprites, ui_resources, pos, door_char)
+            }
             TopTileType::Nothing => {}
         }
 
         match self.bottom {
             BottomTileType::Exit => spawn_exit(commands, meshes, materials, pos),
-            BottomTileType::PressurePlate(_) => spawn_pressure_plate(commands, door_sprites, pos),
+            BottomTileType::PressurePlate(door_char) => {
+                spawn_pressure_plate(commands, door_sprites, ui_resources, pos, door_char)
+            }
             BottomTileType::Spike => spawn_spike(commands, meshes, materials, pos),
             BottomTileType::Nothing => {}
             BottomTileType::TextHint(ref text) => {
@@ -376,9 +380,14 @@ fn init_rewinds(mut rewinds: ResMut<RewindCounter>, map: Res<MapName>) {
     let (total, individual) = match map.0.as_str() {
         "maps/map_1.game_map" => (2, 1),
         "maps/map_2.game_map" => (100, 100),
-        "maps/map_3.game_map" => (100, 100),
-        "maps/map_4.game_map" => (100, 100),
-        "maps/map_5.game_map" => (100, 100),
+        "maps/map_3.game_map" => (2, 10),
+        "maps/map_4.game_map" => (0, 1),
+        "maps/map_5.game_map" => (5, 20),
+        "maps/map_6.game_map" => (100, 100),
+        "maps/map_7.game_map" => (100, 100),
+        "maps/map_8.game_map" => (100, 100),
+        "maps/map_9.game_map" => (100, 100),
+        "maps/map_10.game_map" => (100, 100),
         _ => (100, 100),
     };
 
