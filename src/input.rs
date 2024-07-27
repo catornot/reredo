@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{snake::CanMove, GameState};
+use crate::{snake::CanMove, GameplaySet};
 
 #[derive(Debug, Event)]
 pub struct MoveEvent(pub Vec2);
@@ -11,7 +11,7 @@ pub struct KeyBuffer(pub Vec<KeyCode>);
 pub fn input_plugin(app: &mut App) {
     app.insert_resource(KeyBuffer(Vec::new()))
         .add_event::<MoveEvent>()
-        .add_systems(Update, handle_keys.run_if(in_state(GameState::Gaming)));
+        .add_systems(Update, handle_keys.in_set(GameplaySet::Input));
 }
 
 fn handle_keys(

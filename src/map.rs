@@ -8,10 +8,11 @@ use bevy::{
 };
 
 use crate::{
-    door::{spawn_door, spawn_pressure_plate, PressurePlateActivated},
+    door::{spawn_door, spawn_pressure_plate, DoorSprites, PressurePlateActivated},
     game_over::{spawn_exit, GameWinTrigger},
-    snake::{spawn_snake_piece, CanMove, SnakeIndex, SnakeSize},
+    snake::{spawn_snake_piece, CanMove, RewindCounter, SnakeIndex, SnakeSize},
     spike::spawn_spike,
+    title::UiResources,
     wall::spawn_wall,
     AssetHolder, GameState,
 };
@@ -92,7 +93,8 @@ impl Tile {
         commands: &mut Commands,
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<ColorMaterial>>,
-        door_sprites: &crate::door::DoorSprites,
+        door_sprites: &DoorSprites,
+        ui_resources: &UiResources,
         pos: GridPos,
     ) {
         match self.top {
@@ -118,7 +120,24 @@ impl Tile {
             BottomTileType::PressurePlate(_) => spawn_pressure_plate(commands, door_sprites, pos),
             BottomTileType::Spike => spawn_spike(commands, meshes, materials, pos),
             BottomTileType::Nothing => {}
-            BottomTileType::TextHint(_) => {} // TODO
+            BottomTileType::TextHint(ref text) => {
+                _ = commands.spawn((
+                    Text2dBundle {
+                        text: Text::from_section(
+                            text.as_ref(),
+                            TextStyle {
+                                font: ui_resources.font.clone(),
+                                font_size: 20.,
+                                color: Color::WHITE,
+                            },
+                        ),
+                        transform: Transform::from_xyz(0., 0., 150.),
+                        ..default()
+                    },
+                    pos,
+                    StateScoped(GameState::Gaming),
+                ))
+            }
         }
     }
 }
@@ -224,14 +243,15 @@ impl AssetLoader for MapAssetLoader {
                 {
                     Tile::new(Some(TopTileType::Door(tile)), None)
                 }
-                tile if tile.is_ascii_alphabetic() => tile
+                tile if tile.is_ascii_digit() => tile
                     .to_digit(10)
                     .and_then(|index| text_values.get(index as usize).map(|s| s.as_ref()))
                     .flatten()
+                    .copied()
                     .map(|value| {
                         Tile::new(
                             Some(TopTileType::Wall),
-                            Some(BottomTileType::TextHint(value.to_string().into())),
+                            Some(BottomTileType::TextHint(value.into())),
                         )
                     })
                     .unwrap_or_else(|| {
@@ -263,6 +283,7 @@ pub fn map_plugin(app: &mut App) {
         .observe(on_grid_added)
         .observe(on_grid_removed)
         .add_systems(OnEnter(GameState::Loading), start_map_load)
+        .add_systems(OnEnter(GameState::Gaming), init_rewinds)
         .add_systems(Update, on_map_loaded.run_if(in_state(GameState::Loading)));
 }
 
@@ -307,12 +328,20 @@ pub fn on_map_loaded(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    door_sprites: Res<crate::door::DoorSprites>,
+    door_sprites: Res<DoorSprites>,
+    ui_resources: Res<UiResources>,
     assset_server: Res<AssetServer>,
     mut assets: ResMut<Assets<MapAsset>>,
     asset_map: Res<AssetHolder<MapAsset>>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
+    if matches!(
+        assset_server.load_state(asset_map.0.id()),
+        LoadState::Failed(_)
+    ) {
+        next_state.set(GameState::MainMenu)
+    }
+
     if assset_server.load_state(asset_map.0.id()) != LoadState::Loaded {
         return;
     }
@@ -333,6 +362,7 @@ pub fn on_map_loaded(
             &mut meshes,
             &mut materials,
             door_sprites.as_ref(),
+            ui_resources.as_ref(),
             GridPos(pos),
         )
     }
@@ -340,4 +370,18 @@ pub fn on_map_loaded(
     commands.insert_resource(GameMap(map));
 
     next_state.set(GameState::Gaming)
+}
+
+fn init_rewinds(mut rewinds: ResMut<RewindCounter>, map: Res<MapName>) {
+    let (total, individual) = match map.0.as_str() {
+        "maps/map_1.game_map" => (2, 1),
+        "maps/map_2.game_map" => (100, 100),
+        "maps/map_3.game_map" => (100, 100),
+        "maps/map_4.game_map" => (100, 100),
+        "maps/map_5.game_map" => (100, 100),
+        _ => (100, 100),
+    };
+
+    rewinds.total = total;
+    rewinds.individual = individual;
 }

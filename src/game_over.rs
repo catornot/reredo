@@ -6,7 +6,7 @@ use bevy::{
 
 use crate::{
     map::{GridPos, MapName, GRID_CELL_SIZE},
-    snake::{CanMove, Move},
+    snake::{CanMove, Move, RewindCounter},
     title::UiResources,
     GameState,
 };
@@ -30,11 +30,15 @@ pub fn game_over_plugin(app: &mut App) {
     app.add_sub_state::<GameOverState>()
         .observe(on_game_won_reached)
         .add_systems(OnEnter(GameState::Gaming), reset_game_over)
-        .add_systems(OnEnter(GameOverState::Death), display_right_ui)
+        .add_systems(
+            OnEnter(GameOverState::Death),
+            (display_right_ui, try_remove_player_on_death),
+        )
         .add_systems(OnEnter(GameOverState::Win), display_right_ui)
         .add_systems(
             Update,
-            (check_for_death, continue_from_state).run_if(in_state(GameState::Gaming)),
+            (check_for_death, continue_from_state, check_for_rewinds_left)
+                .run_if(in_state(GameState::Gaming)),
         );
 }
 
@@ -75,6 +79,24 @@ fn check_for_death(
     if snake.iter().next().is_none() {
         game_over.set(GameOverState::Death);
     }
+}
+
+fn check_for_rewinds_left(
+    rewinds: Res<RewindCounter>,
+    mut game_over: ResMut<NextState<GameOverState>>,
+) {
+    if rewinds.total <= 0 || rewinds.individual <= 0 {
+        game_over.set(GameOverState::Death);
+    }
+}
+
+fn try_remove_player_on_death(
+    snake: Query<Entity, Or<(With<CanMove>, With<Move>)>>,
+    mut commands: Commands,
+) {
+    snake
+        .iter()
+        .for_each(|ent| commands.entity(ent).despawn_recursive());
 }
 
 fn display_right_ui(
@@ -140,6 +162,10 @@ fn continue_from_state(
     mut next_state: ResMut<NextState<GameState>>,
     mut map_name: ResMut<MapName>,
 ) {
+    if keys.just_pressed(KeyCode::KeyR) && keys.pressed(KeyCode::ControlLeft) {
+        next_state.set(GameState::Loading)
+    }
+
     if !keys.just_pressed(KeyCode::Enter) {
         return;
     }
@@ -150,13 +176,15 @@ fn continue_from_state(
         GameOverState::Win => {
             if let Some(map_index) = map_name
                 .0
-                .split('_')
-                .last()
+                .split_once('.')
+                .map(|(file_name, _)| file_name)
+                .and_then(|file_name| file_name.split_once('_'))
+                .map(|(_, num)| num)
                 .and_then(|last| last.parse::<u32>().ok())
             {
                 map_name
                     .0
-                    .replace_range(.., &format!("map_{}", map_index + 1));
+                    .replace_range(.., &format!("maps/map_{}.game_map", map_index + 1));
 
                 next_state.set(GameState::Loading);
             } else {

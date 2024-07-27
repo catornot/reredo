@@ -12,6 +12,12 @@ use crate::{
     GameState, GameplaySet,
 };
 
+#[derive(Debug, Resource, Default)]
+pub struct RewindCounter {
+    pub total: isize,
+    pub individual: isize,
+}
+
 #[derive(Debug, Component)]
 pub struct Move(pub Vec2);
 
@@ -28,7 +34,7 @@ pub struct SnakeSize(pub Vec2);
 pub struct CanMove;
 
 pub fn snake_plugin(app: &mut App) {
-    app.add_systems(
+    app.init_resource::<RewindCounter>().add_systems(
         Update,
         (
             consume_move,
@@ -108,6 +114,7 @@ fn cycle_snake(
     snake_pieces: Query<(Entity, &mut SnakeIndex, &GridPos)>,
     mut map: ResMut<GameMap>,
     mut commands: Commands,
+    mut rewinds: ResMut<RewindCounter>,
 ) {
     if !matches!(cycle_buffer.0.last(), Some(KeyCode::Enter)) {
         return;
@@ -179,6 +186,8 @@ fn cycle_snake(
     }
 
     cycle_buffer.0.clear();
+    rewinds.total -= 1;
+    rewinds.individual -= steps as isize;
 }
 
 fn consume_move(mut gizmos: Gizmos, snake_pieces: Query<(&GridPos, &SnakeSize), With<CanMove>>) {

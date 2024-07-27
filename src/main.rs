@@ -16,6 +16,7 @@ use input::input_plugin;
 use main_menu::main_menu_ui_plugin;
 use map::map_plugin;
 use snake::snake_plugin;
+use sounds::sounds_plugin;
 use spike::spike_plugin;
 use title::title_ui_plugin;
 use ui::game_ui_plugin;
@@ -27,6 +28,7 @@ mod input;
 mod main_menu;
 mod map;
 mod snake;
+mod sounds;
 mod spike;
 mod title;
 mod ui;
@@ -76,6 +78,7 @@ fn main() {
             main_menu_ui_plugin,
             title_ui_plugin,
             game_over_plugin,
+            sounds_plugin,
         ))
         .enable_state_scoped_entities::<GameState>()
         .configure_sets(
@@ -104,7 +107,7 @@ fn main_setup(mut commands: Commands) {
             ..default()
         },
         BloomSettings {
-            intensity: 0.15,
+            intensity: 0.20,
             low_frequency_boost: 0.7,
             low_frequency_boost_curvature: 0.95,
             high_pass_frequency: 1.0,

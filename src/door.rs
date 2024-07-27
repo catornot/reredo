@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{map::GridPos, GameState};
+use crate::{map::GridPos, sounds::SoundEvent, GameState};
 
 #[derive(Debug, Resource)]
 pub struct DoorSprites {
@@ -57,6 +57,8 @@ fn on_plate_activated(
     {
         commands.entity(ent).despawn_recursive();
     }
+
+    commands.trigger(SoundEvent::PressurePlate);
 
     pressure_plates
         .iter_mut()

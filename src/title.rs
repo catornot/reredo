@@ -9,6 +9,7 @@ use crate::GameState;
 pub struct UiResources {
     pub font: Handle<Font>,
     pub cat: Handle<Image>,
+    pub looker: Handle<Image>,
 }
 
 impl FromWorld for UiResources {
@@ -17,6 +18,7 @@ impl FromWorld for UiResources {
         UiResources {
             font: asset_server.load("fonts/oswald.ttf"),
             cat: asset_server.load("pictures/cat.png"),
+            looker: asset_server.load("pictures/looker.png"),
         }
     }
 }

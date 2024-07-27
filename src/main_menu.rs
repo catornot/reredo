@@ -15,6 +15,9 @@ struct CreditsButton;
 #[derive(Debug, Component)]
 struct GoBackButton;
 
+#[derive(Debug, Component)]
+struct QuitButton;
+
 #[derive(Debug, SubStates, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 #[source(GameState = GameState::MainMenu)]
 pub enum MainMenuState {
@@ -23,9 +26,10 @@ pub enum MainMenuState {
     Creadits,
     Cat,
     ToGaming,
+    Quit,
 }
 
-use crate::{title::UiResources, GameState};
+use crate::{sounds::SoundEvent, title::UiResources, GameState};
 
 pub fn main_menu_ui_plugin(app: &mut App) {
     app.add_sub_state::<MainMenuState>()
@@ -55,12 +59,17 @@ pub fn main_menu_ui_plugin(app: &mut App) {
             |mut next_state: ResMut<NextState<MainMenuState>>| next_state.set(MainMenuState::Main),
         )
         .add_systems(
+            OnEnter(MainMenuState::Quit),
+            |mut exit: EventWriter<AppExit>| _ = exit.send(AppExit::Success),
+        )
+        .add_systems(
             Update,
             (
                 transition_to_builder::<GamingButton>(MainMenuState::ToGaming),
                 transition_to_builder::<CreditsButton>(MainMenuState::Creadits),
                 transition_to_builder::<CatButton>(MainMenuState::Cat),
                 transition_to_builder::<GoBackButton>(MainMenuState::Main),
+                transition_to_builder::<QuitButton>(MainMenuState::Quit),
                 skip_to_play,
             )
                 .run_if(in_state(GameState::MainMenu)),
@@ -99,7 +108,10 @@ fn setup_main_ui(parent: &mut ChildBuilder, _ui_resources: &UiResources, button_
         .insert(StateScoped(MainMenuState::Main));
     create_button(parent, "Credits", button_style.clone(), CreditsButton)
         .insert(StateScoped(MainMenuState::Main));
-    create_button(parent, "Cat", button_style, CatButton).insert(StateScoped(MainMenuState::Main));
+    create_button(parent, "Cat", button_style.clone(), CatButton)
+        .insert(StateScoped(MainMenuState::Main));
+    create_button(parent, "Quit", button_style, QuitButton)
+        .insert(StateScoped(MainMenuState::Main));
 }
 
 fn setup_credits_ui(
@@ -131,6 +143,14 @@ fn setup_credits_ui(
     parent.spawn(TextBundle {
         text: Text::from_section(
             "I made the game and like got a the oswald font from vernnobile's github\nalso bevy",
+            button_style.clone(),
+        ),
+        ..default()
+    }).insert(StateScoped(MainMenuState::Creadits));
+
+    parent.spawn(TextBundle {
+        text: Text::from_section(
+            r#"Pressure Plate by proolsen -- https://freesound.org/s/466272/ -- License: Creative Commons 0"#,
             button_style.clone(),
         ),
         ..default()
@@ -243,6 +263,7 @@ fn create_button<'a, T: Component>(
 }
 
 fn transition_to<T: Component>(
+    mut commands: Commands,
     mut button: Query<
         (&mut BorderColor, &mut BackgroundColor, &Interaction),
         (Changed<Interaction>, With<Button>, With<T>),
@@ -256,6 +277,7 @@ fn transition_to<T: Component>(
                 *color = PRESSED_BUTTON.into();
                 border_color.0 = Color::BLACK;
                 next_state.set(to_state);
+                commands.trigger(SoundEvent::Select);
             }
             Interaction::Hovered => {
                 border_color.0 = PRESSED_BUTTON;
@@ -271,17 +293,19 @@ fn transition_to<T: Component>(
 fn transition_to_builder<T: Component>(
     to_state: MainMenuState,
 ) -> impl Fn(
+    Commands,
     Query<
         (&mut BorderColor, &mut BackgroundColor, &Interaction),
         (Changed<Interaction>, With<Button>, With<T>),
     >,
     ResMut<NextState<MainMenuState>>,
 ) {
-    move |button: Query<
+    move |commands: Commands,
+          button: Query<
         (&mut BorderColor, &mut BackgroundColor, &Interaction),
         (Changed<Interaction>, With<Button>, With<T>),
     >,
           next_state: ResMut<NextState<MainMenuState>>| {
-        transition_to::<T>(button, next_state, to_state)
+        transition_to::<T>(commands, button, next_state, to_state)
     }
 }

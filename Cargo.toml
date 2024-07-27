@@ -17,4 +17,4 @@ opt-level = 3
 
 [dependencies.bevy]
 version = "0.14"
-features = ["dynamic_linking"]
+features = ["dynamic_linking", "wav"]
