@@ -22,7 +22,7 @@ pub fn game_ui_plugin(app: &mut App) {
 
 fn setup_gaming_ui(mut commands: Commands, ui_resources: Res<UiResources>) {
     let text_style = TextStyle {
-        font_size: 20.0,
+        font_size: 25.0,
         color: Color::srgba_u8(153, 153, 153, 255),
         font: ui_resources.font.clone(),
     };
@@ -57,8 +57,8 @@ fn setup_gaming_ui(mut commands: Commands, ui_resources: Res<UiResources>) {
                         TextSection::new("2", text_style.clone()),
                     ])
                     .with_style(Style {
-                        top: Val::Px(5.),
-                        left: Val::Px(5.),
+                        top: Val::Px(10.),
+                        left: Val::Px(10.),
                         ..default()
                     }),
                 )
@@ -72,7 +72,7 @@ fn setup_gaming_ui(mut commands: Commands, ui_resources: Res<UiResources>) {
                     ])
                     .with_style(Style {
                         top: Val::Px(5.),
-                        left: Val::Px(5.),
+                        left: Val::Px(10.),
                         ..default()
                     }),
                 )
@@ -80,14 +80,17 @@ fn setup_gaming_ui(mut commands: Commands, ui_resources: Res<UiResources>) {
         });
     commands
         .spawn(
-            TextBundle::from_section("", text_style)
-                .with_text_justify(JustifyText::Left)
-                .with_style(Style {
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(5.0),
-                    left: Val::Px(5.0),
-                    ..default()
-                }),
+            TextBundle::from_sections(vec![
+                TextSection::new(":", text_style.clone()),
+                TextSection::new("", text_style),
+            ])
+            .with_text_justify(JustifyText::Left)
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(5.0),
+                left: Val::Px(10.0),
+                ..default()
+            }),
         )
         .insert(StateScoped(GameState::Gaming))
         .insert(BufferText);
@@ -135,11 +138,11 @@ fn update_rewinds_count(
     rewinds: Res<RewindCounter>,
 ) {
     if let Some(mut text) = text_cycles.iter_mut().next() {
-        text.sections[2].value = rewinds.individual.to_string();
+        text.sections[2].value = rewinds.individual.max(0).to_string();
     }
 
     if let Some(mut text) = text_rewinds.iter_mut().next() {
-        text.sections[2].value = rewinds.total.to_string();
+        text.sections[2].value = rewinds.total.max(0).to_string();
     }
 }
 
@@ -154,7 +157,7 @@ fn update_buffer(
     *last_len = key_buffer.0.len();
 
     if let Some(mut text) = text.iter_mut().next() {
-        text.sections[0].value = key_buffer.0.iter().copied().map(map_key_buffer).collect();
+        text.sections[1].value = key_buffer.0.iter().copied().map(map_key_buffer).collect();
     }
 }
 

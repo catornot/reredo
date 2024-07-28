@@ -7,6 +7,7 @@ use bevy::{
 use std::ops::{Div, Not, Sub};
 
 use crate::{
+    fade_out::FadeOutThisEnt,
     input::{KeyBuffer, MoveEvent},
     map::{GameMap, GridPos, GRID_CELL_SIZE},
     GameState, GameplaySet,
@@ -111,7 +112,7 @@ fn camera_follow(
 
 fn cycle_snake(
     mut cycle_buffer: ResMut<KeyBuffer>,
-    snake_pieces: Query<(Entity, &mut SnakeIndex, &GridPos)>,
+    snake_pieces: Query<(Entity, &mut SnakeIndex, &SnakeColor, &GridPos)>,
     mut map: ResMut<GameMap>,
     mut commands: Commands,
     mut rewinds: ResMut<RewindCounter>,
@@ -138,6 +139,11 @@ fn cycle_snake(
         KeyCode::Digit9,
     ];
 
+    if cycle_buffer.0.len() > 10 {
+        cycle_buffer.0.clear();
+        return;
+    }
+
     let steps = if matches!(cycle_buffer.0.first(), Some(KeyCode::KeyC)) {
         if let Some(steps) = cycle_buffer
             .0
@@ -152,10 +158,7 @@ fn cycle_snake(
                         if pos == 0 {
                             step
                         } else {
-                            Some(
-                                steps?
-                                    + 10usize.pow(u32::try_from(pos).ok()?).checked_mul(step?)?,
-                            )
+                            Some(steps? + 10usize.pow(pos as u32).saturating_mul(step?))
                         }
                     })
             })
@@ -177,15 +180,20 @@ fn cycle_snake(
     (0..steps)
         .filter_map(|i| snake_ordered.get(i))
         .for_each(|piece| {
-            if let Some(map_tile) = map.get_mut(*piece.2) {
+            if let Some(map_tile) = map.get_mut(*piece.3) {
                 map_tile.top_removed();
             }
 
-            return commands.entity(piece.0).despawn_recursive();
+            // commands.entity(piece.0).despawn_recursive();
+            commands.entity(piece.0).insert(FadeOutThisEnt(piece.2 .0));
         });
 
-    if let Some(new_head) = snake_ordered.get(steps).map(|new_head| new_head.0) {
-        commands.entity(new_head).insert(CanMove);
+    if let Some(mut new_head) = snake_ordered
+        .get(steps)
+        .map(|new_head| new_head.0)
+        .and_then(|new_head| commands.get_entity(new_head))
+    {
+        new_head.insert(CanMove);
     }
 
     cycle_buffer.0.clear();
@@ -301,7 +309,11 @@ fn move_snake(
 
     if dif >= 1. {
         transform.translation = ddst.extend(0.);
-        commands.entity(ent).remove::<Move>().insert(CanMove);
+
+        if let Some(mut ent) = commands.get_entity(ent) {
+            ent.remove::<Move>().try_insert(CanMove);
+        }
+
         dst.take();
     }
 }

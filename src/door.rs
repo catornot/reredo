@@ -51,9 +51,9 @@ fn on_plate_activated(
     doors: Query<(Entity, &Door)>,
     mut pressure_plates: Query<(&GridPos, &mut TextureAtlas), (Without<Door>, With<PressurePlate>)>,
 ) {
-    if let Some((ent, _)) = doors
+    for ent in doors
         .iter()
-        .find_map(|door| door.1 .0.eq(&trigger.event().0).then_some((door.0, door.1)))
+        .filter_map(|door| door.1 .0.eq(&trigger.event().0).then_some(door.0))
     {
         commands.entity(ent).despawn_recursive();
     }
@@ -65,7 +65,7 @@ fn on_plate_activated(
         .find(|(pos, _)| pos.0 == trigger.event().1)
         .expect("trigger pos should be a valid pressure plate")
         .1
-        .index += 1;
+        .index = 1;
 }
 
 pub fn spawn_door(

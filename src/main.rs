@@ -11,6 +11,7 @@ use bevy::{
 };
 
 use door::door_plugin;
+use fade_out::fade_out_plugin;
 use game_over::game_over_plugin;
 use input::input_plugin;
 use main_menu::main_menu_ui_plugin;
@@ -23,6 +24,7 @@ use ui::game_ui_plugin;
 use wall::wall_plugin;
 
 mod door;
+mod fade_out;
 mod game_over;
 mod input;
 mod main_menu;
@@ -50,6 +52,7 @@ pub enum GameState {
 pub enum GameplaySet {
     Input,
     Behavior,
+    After,
 }
 
 fn main() {
@@ -79,6 +82,7 @@ fn main() {
             title_ui_plugin,
             game_over_plugin,
             sounds_plugin,
+            fade_out_plugin,
         ))
         .enable_state_scoped_entities::<GameState>()
         .configure_sets(
@@ -88,6 +92,9 @@ fn main() {
                 GameplaySet::Behavior
                     .run_if(in_state(GameState::Gaming))
                     .after(GameplaySet::Input),
+                GameplaySet::After
+                    .run_if(in_state(GameState::Gaming))
+                    .after(GameplaySet::Behavior),
             ),
         )
         .insert_resource(ClearColor(Color::srgba(0.1, 0.1, 0.1, 1.)))

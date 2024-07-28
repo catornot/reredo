@@ -21,6 +21,10 @@ pub enum SoundEvent {
     SnakeMove,
     PressurePlate,
     Select,
+    Exit,
+    #[allow(dead_code)]
+    Wind,
+    Spike,
 }
 
 #[derive(Debug, Resource)]
@@ -28,6 +32,9 @@ struct AudioFiles {
     snake_move: Handle<AudioSource>,
     pressure_plate: Handle<AudioSource>,
     comfirm: Handle<AudioSource>,
+    exit: Handle<AudioSource>,
+    wind: Handle<AudioSource>,
+    spike: Handle<AudioSource>,
 }
 
 impl FromWorld for AudioFiles {
@@ -37,6 +44,9 @@ impl FromWorld for AudioFiles {
             snake_move: asset_server.load("sounds/snek_move.wav"),
             pressure_plate: asset_server.load("sounds/plate.wav"),
             comfirm: asset_server.load("sounds/confirm.wav"),
+            exit: asset_server.load("sounds/end.wav"),
+            wind: asset_server.load("sounds/wind.wav"),
+            spike: asset_server.load("sounds/hit.wav"),
         }
     }
 }
@@ -64,8 +74,8 @@ fn on_sound(
                 source: source.snake_move.clone(),
                 settings: PlaybackSettings {
                     mode: bevy::audio::PlaybackMode::Despawn,
-                    volume: Volume::new(0.5),
-                    speed: 1.2 + pitches.next(),
+                    volume: Volume::new(0.4),
+                    speed: 1.3 + pitches.next(),
                     ..default()
                 },
             },))
@@ -86,6 +96,35 @@ fn on_sound(
                     mode: bevy::audio::PlaybackMode::Despawn,
                     volume: Volume::new(0.5),
                     speed: 2.0,
+                    ..default()
+                },
+            })
+        }
+        SoundEvent::Exit => {
+            _ = commands.spawn(AudioBundle {
+                source: source.exit.clone(),
+                settings: PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    ..default()
+                },
+            })
+        }
+        SoundEvent::Wind => {
+            _ = commands.spawn(AudioBundle {
+                source: source.wind.clone(),
+                settings: PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    ..default()
+                },
+            })
+        }
+        SoundEvent::Spike => {
+            _ = commands.spawn(AudioBundle {
+                source: source.spike.clone(),
+                settings: PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    volume: Volume::new(0.6),
+                    speed: 1.2,
                     ..default()
                 },
             })

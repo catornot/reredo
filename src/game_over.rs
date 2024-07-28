@@ -85,7 +85,7 @@ fn check_for_rewinds_left(
     rewinds: Res<RewindCounter>,
     mut game_over: ResMut<NextState<GameOverState>>,
 ) {
-    if rewinds.total <= 0 || rewinds.individual <= 0 {
+    if rewinds.total < 0 || rewinds.individual < 0 {
         game_over.set(GameOverState::Death);
     }
 }
@@ -166,11 +166,23 @@ fn continue_from_state(
         next_state.set(GameState::Loading)
     }
 
-    if !keys.just_pressed(KeyCode::Enter) {
-        return;
+    if keys.just_pressed(KeyCode::Escape) {
+        next_state.set(GameState::MainMenu)
     }
 
-    match game_over.get() {
+    let state = if keys.just_pressed(KeyCode::KeyN)
+        && keys.pressed(KeyCode::ControlLeft)
+        && keys.pressed(KeyCode::AltLeft)
+        && keys.pressed(KeyCode::ShiftLeft)
+    {
+        GameOverState::Win
+    } else if !keys.just_pressed(KeyCode::Enter) {
+        return;
+    } else {
+        *game_over.get()
+    };
+
+    match state {
         GameOverState::None => {}
         GameOverState::Death => next_state.set(GameState::Loading),
         GameOverState::Win => {

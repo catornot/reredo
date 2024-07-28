@@ -4,14 +4,14 @@ use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext, LoadState},
     log,
     prelude::*,
-    reflect::TypePath,
 };
 
 use crate::{
     door::{spawn_door, spawn_pressure_plate, DoorSprites, PressurePlateActivated},
     game_over::{spawn_exit, GameWinTrigger},
     snake::{spawn_snake_piece, CanMove, RewindCounter, SnakeIndex, SnakeSize},
-    spike::spawn_spike,
+    sounds::SoundEvent,
+    spike::{spawn_spike, SpikeSprites},
     title::UiResources,
     wall::spawn_wall,
     AssetHolder, GameState,
@@ -80,7 +80,8 @@ impl Tile {
         }
 
         if let BottomTileType::Exit = self.bottom {
-            commands.trigger(GameWinTrigger)
+            commands.trigger(SoundEvent::Exit);
+            commands.trigger(GameWinTrigger);
         }
     }
 
@@ -94,6 +95,7 @@ impl Tile {
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<ColorMaterial>>,
         door_sprites: &DoorSprites,
+        spike_sprites: &SpikeSprites,
         ui_resources: &UiResources,
         pos: GridPos,
     ) {
@@ -122,7 +124,7 @@ impl Tile {
             BottomTileType::PressurePlate(door_char) => {
                 spawn_pressure_plate(commands, door_sprites, ui_resources, pos, door_char)
             }
-            BottomTileType::Spike => spawn_spike(commands, meshes, materials, pos),
+            BottomTileType::Spike => spawn_spike(commands, spike_sprites, pos),
             BottomTileType::Nothing => {}
             BottomTileType::TextHint(ref text) => {
                 _ = commands.spawn((
@@ -333,6 +335,7 @@ pub fn on_map_loaded(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     door_sprites: Res<DoorSprites>,
+    spike_sprites: Res<SpikeSprites>,
     ui_resources: Res<UiResources>,
     assset_server: Res<AssetServer>,
     mut assets: ResMut<Assets<MapAsset>>,
@@ -366,6 +369,7 @@ pub fn on_map_loaded(
             &mut meshes,
             &mut materials,
             door_sprites.as_ref(),
+            spike_sprites.as_ref(),
             ui_resources.as_ref(),
             GridPos(pos),
         )
@@ -379,13 +383,13 @@ pub fn on_map_loaded(
 fn init_rewinds(mut rewinds: ResMut<RewindCounter>, map: Res<MapName>) {
     let (total, individual) = match map.0.as_str() {
         "maps/map_1.game_map" => (2, 1),
-        "maps/map_2.game_map" => (100, 100),
-        "maps/map_3.game_map" => (2, 10),
-        "maps/map_4.game_map" => (1, 1),
-        "maps/map_5.game_map" => (5, 20),
-        "maps/map_6.game_map" => (100, 100),
-        "maps/map_7.game_map" => (100, 100),
-        "maps/map_8.game_map" => (100, 100),
+        "maps/map_2.game_map" => (50, 100),
+        "maps/map_3.game_map" => (0, 10),
+        "maps/map_4.game_map" => (0, 5),
+        "maps/map_5.game_map" => (4, 20),
+        "maps/map_6.game_map" => (2, 15),
+        "maps/map_7.game_map" => (2, 10),
+        "maps/map_8.game_map" => (1, 30),
         "maps/map_9.game_map" => (100, 100),
         "maps/map_10.game_map" => (100, 100),
         _ => (100, 100),
