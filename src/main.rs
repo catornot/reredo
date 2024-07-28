@@ -56,6 +56,8 @@ pub enum GameplaySet {
 }
 
 fn main() {
+    // println!("{}", Srgba::rgb_u8(20, 20, 200).to_hex());
+
     App::new()
         .add_plugins((
             DefaultPlugins
