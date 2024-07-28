@@ -22,6 +22,9 @@ pub struct RewindCounter {
 #[derive(Debug, Component)]
 pub struct Move(pub Vec2);
 
+#[derive(Debug, Component)]
+pub struct TaggedDeath;
+
 #[derive(Debug, Component, Clone, Copy)]
 pub struct SnakeIndex(pub usize);
 
@@ -71,15 +74,16 @@ pub fn spawn_snake_piece<'a>(
 }
 
 fn camera_follow(
-    snake_pieces: Query<(&SnakeIndex, &Transform), (With<CanMove>, Without<Camera>)>,
+    snake_pieces: Query<(&SnakeIndex, &GridPos), (With<CanMove>, Without<Camera>)>,
     mut camera: Query<&mut Transform, (With<Camera>, Without<CanMove>)>,
     time: Res<Time>,
-    mut start_time: Local<f32>,
-    mut start_pos: Local<Vec2>,
+    mut maybe_timer: Local<Option<Timer>>,
+    mut last_know_pos: Local<Vec2>,
+    mut last_know_camera_pos: Local<Vec2>,
 ) {
     let Some(head_pos) = snake_pieces
         .iter()
-        .fold(None::<(&SnakeIndex, &Transform)>, |max, piece| {
+        .fold(None::<(&SnakeIndex, &GridPos)>, |max, piece| {
             Some(max.unwrap_or(piece)).map(|other| {
                 if other.0 .0 < piece.0 .0 {
                     piece
@@ -88,8 +92,9 @@ fn camera_follow(
                 }
             })
         })
-        .map(|head| head.1.translation.truncate())
+        .map(|head| head.1.to_vec2() * GRID_CELL_SIZE)
     else {
+        maybe_timer.take();
         return;
     };
 
@@ -97,17 +102,26 @@ fn camera_follow(
         .get_single_mut()
         .expect("only one camera should ever exists");
 
-    if *start_time + 0.3 < time.elapsed_seconds() {
-        if camera_pos.translation.truncate() != head_pos {
-            *start_time = time.elapsed_seconds();
-            *start_pos = camera_pos.translation.truncate();
-        }
+    if let Some(timer) = maybe_timer.as_mut() {
+        timer.tick(time.elapsed());
+
+        camera_pos.translation = last_know_pos
+            .lerp(*last_know_pos, timer.elapsed_secs())
+            .extend(0.)
+    } else {
+        maybe_timer.replace(Timer::from_seconds(1.2, TimerMode::Once));
+        *last_know_pos = head_pos;
+        *last_know_camera_pos = camera_pos.translation.truncate();
         return;
     }
 
-    camera_pos.translation = start_pos
-        .lerp(head_pos, (time.elapsed_seconds() - *start_time).div(0.3))
-        .extend(0.)
+    if maybe_timer
+        .as_ref()
+        .map(|timer| timer.finished())
+        .unwrap_or_default()
+    {
+        maybe_timer.take();
+    }
 }
 
 fn cycle_snake(

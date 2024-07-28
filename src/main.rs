@@ -70,6 +70,14 @@ fn main() {
                     level: Level::INFO,
                     filter: "wgpu=off,bevy_render=info,bevy_ecs=trace".to_string(),
                     custom_layer: |_| None,
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "ReSnaked".to_string(),
+                        name: Some("ReSnaked".to_string()),
+                        ..default()
+                    }),
+                    ..default()
                 }),
             snake_plugin,
             door_plugin,

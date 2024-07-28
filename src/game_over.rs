@@ -6,7 +6,7 @@ use bevy::{
 
 use crate::{
     map::{GridPos, MapName, GRID_CELL_SIZE},
-    snake::{CanMove, Move, RewindCounter},
+    snake::{CanMove, Move, RewindCounter, TaggedDeath},
     title::UiResources,
     GameState,
 };
@@ -73,7 +73,7 @@ fn on_game_won_reached(
 }
 
 fn check_for_death(
-    snake: Query<Entity, Or<(With<CanMove>, With<Move>)>>,
+    snake: Query<Entity, (Or<(With<CanMove>, With<Move>)>, Without<TaggedDeath>)>,
     mut game_over: ResMut<NextState<GameOverState>>,
 ) {
     if snake.iter().next().is_none() {

@@ -35,6 +35,10 @@ fn handle_keys(
         move_event.send(MoveEvent(Vec2::from_array(move_dir)));
     }
 
+    if keys.just_pressed(KeyCode::Backspace) {
+        cycle_buffer.0.clear()
+    }
+
     cycle_buffer.0.extend(
         keys.get_just_pressed()
             .map(|key| key.to_owned())

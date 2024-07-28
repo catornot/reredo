@@ -7,7 +7,9 @@ use bevy::{
 };
 
 use crate::{
-    door::{spawn_door, spawn_pressure_plate, DoorSprites, PressurePlateActivated},
+    door::{
+        spawn_anti_door, spawn_door, spawn_pressure_plate, DoorSprites, PressurePlateActivated,
+    },
     game_over::{spawn_exit, GameWinTrigger},
     snake::{spawn_snake_piece, CanMove, RewindCounter, SnakeIndex, SnakeSize},
     sounds::SoundEvent,
@@ -23,7 +25,7 @@ pub const GRID_CELL_SIZE: Vec2 = Vec2::new(50., 50.);
 pub struct GridPos(pub [usize; 2]);
 
 impl GridPos {
-    fn to_vec(self) -> Vec2 {
+    pub fn to_vec2(self) -> Vec2 {
         Vec2::from_array(self.0.map(|i| i as f32))
     }
 }
@@ -56,6 +58,7 @@ pub enum BottomTileType {
     Exit,
     Spike,
     TextHint(Box<str>),
+    AntiDoor(char),
     #[default]
     Nothing,
 }
@@ -87,6 +90,11 @@ impl Tile {
 
     pub fn top_removed(&mut self) {
         self.top = TopTileType::Nothing;
+    }
+
+    pub fn upgrade_to_door(&mut self, door: char) {
+        self.top = TopTileType::Door(door);
+        self.bottom = BottomTileType::Nothing;
     }
 
     pub fn spawn(
@@ -143,6 +151,9 @@ impl Tile {
                     pos,
                     StateScoped(GameState::Gaming),
                 ))
+            }
+            BottomTileType::AntiDoor(door_char) => {
+                spawn_anti_door(commands, door_sprites, ui_resources, pos, door_char)
             }
         }
     }
@@ -249,6 +260,21 @@ impl AssetLoader for MapAssetLoader {
                 {
                     Tile::new(Some(TopTileType::Door(tile)), None)
                 }
+                'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J'
+                    if tile.is_ascii_alphabetic() && tile.is_uppercase() =>
+                {
+                    const DOOR_MAP: [char; 7] = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
+                    const ANTI_DOOR_MAP: [char; 7] = ['A', 'S', 'D', 'F', 'G', 'H', 'J'];
+                    Tile::new(
+                        None,
+                        Some(BottomTileType::AntiDoor(
+                            DOOR_MAP[ANTI_DOOR_MAP
+                                .iter()
+                                .position(|c| *c == tile)
+                                .expect("door maps should line up")],
+                        )),
+                    )
+                }
                 tile if tile.is_ascii_digit() => tile
                     .to_digit(10)
                     .and_then(|index| text_values.get(index as usize).map(|s| s.as_ref()))
@@ -303,7 +329,7 @@ fn on_grid_added(
     };
 
     grid_ent.0.translation =
-        (GRID_CELL_SIZE * grid_ent.1.to_vec()).extend(grid_ent.0.translation.z);
+        (GRID_CELL_SIZE * grid_ent.1.to_vec2()).extend(grid_ent.0.translation.z);
 }
 
 fn on_grid_removed(
@@ -390,8 +416,13 @@ fn init_rewinds(mut rewinds: ResMut<RewindCounter>, map: Res<MapName>) {
         "maps/map_6.game_map" => (2, 15),
         "maps/map_7.game_map" => (2, 10),
         "maps/map_8.game_map" => (1, 30),
-        "maps/map_9.game_map" => (100, 100),
-        "maps/map_10.game_map" => (100, 100),
+        "maps/map_9.game_map" => (2, 10),
+        "maps/map_10.game_map" => (4, 20),
+        "maps/map_11.game_map" => (100, 100),
+        "maps/map_12.game_map" => (100, 100),
+        "maps/map_13.game_map" => (100, 100),
+        "maps/map_14.game_map" => (100, 100),
+        "maps/map_15.game_map" => (100, 100),
         _ => (100, 100),
     };
 
