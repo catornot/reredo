@@ -40,14 +40,7 @@ pub struct CanMove;
 pub fn snake_plugin(app: &mut App) {
     app.init_resource::<RewindCounter>().add_systems(
         Update,
-        (
-            consume_move,
-            on_move_snake,
-            move_snake,
-            cycle_snake,
-            camera_follow,
-        )
-            .in_set(GameplaySet::Behavior),
+        (on_move_snake, move_snake, cycle_snake, camera_follow).in_set(GameplaySet::Behavior),
     );
 }
 
@@ -205,17 +198,6 @@ fn cycle_snake(
     cycle_buffer.0.clear();
     rewinds.total -= 1;
     rewinds.individual -= steps as isize;
-}
-
-fn consume_move(mut gizmos: Gizmos, snake_pieces: Query<(&GridPos, &SnakeSize), With<CanMove>>) {
-    for (grid_pos, size) in snake_pieces.iter() {
-        gizmos.rect_2d(
-            Vec2::new(grid_pos.0[0] as f32, grid_pos.0[1] as f32) * GRID_CELL_SIZE,
-            0.,
-            size.0,
-            Color::WHITE,
-        );
-    }
 }
 
 fn on_move_snake(
