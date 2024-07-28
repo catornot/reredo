@@ -418,11 +418,11 @@ fn init_rewinds(mut rewinds: ResMut<RewindCounter>, map: Res<MapName>) {
         "maps/map_8.game_map" => (1, 30),
         "maps/map_9.game_map" => (2, 10),
         "maps/map_10.game_map" => (4, 20),
-        "maps/map_11.game_map" => (100, 100),
-        "maps/map_12.game_map" => (100, 100),
-        "maps/map_13.game_map" => (100, 100),
-        "maps/map_14.game_map" => (100, 100),
-        "maps/map_15.game_map" => (100, 100),
+        "maps/map_11.game_map" => (2, 30),
+        "maps/map_12.game_map" => (2, 30),
+        "maps/map_13.game_map" => (4, 30),
+        "maps/map_14.game_map" => (4, 30),
+        "maps/map_15.game_map" => (4, 30),
         _ => (100, 100),
     };
 

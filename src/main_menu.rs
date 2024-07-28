@@ -246,7 +246,7 @@ fn setup_level_selection(
         })
         .with_children(|parent| {
             // TODO: count levels
-            (1..=10).for_each(|i| {
+            (1..=15).for_each(|i| {
                 _ = create_button(
                     parent,
                     &format!("level {i}"),
