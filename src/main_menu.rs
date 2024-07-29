@@ -246,10 +246,10 @@ fn setup_level_selection(
         })
         .with_children(|parent| {
             // TODO: count levels
-            (1..=15).for_each(|i| {
+            (1..=16).for_each(|i| {
                 _ = create_button(
                     parent,
-                    &format!("level {i}"),
+                    &format!("level {}", if i == 16 { "X".into() } else { i.to_string() }),
                     button_style.clone(),
                     SelectLevelButton(i),
                 )

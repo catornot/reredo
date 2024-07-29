@@ -51,6 +51,6 @@
 SPLIT_HERE
 1::hello
 2::the blue thing is the "exit"
-3::you are kinda a snake
+3::I think you are a snake
 4::you know you may be stuck, so just ctr+r to reload
 5::arrow keys can be used to move the snek
